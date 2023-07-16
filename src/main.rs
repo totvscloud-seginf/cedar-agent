@@ -37,7 +37,7 @@ async fn main() {
     let data_store_arc = Arc::new(data_store);
     let policy_store_arc = Arc::new(policy_store);
 
-    if !config.file_watch.is_none() && config.file_watch.unwrap_or(false) {
+    if !config.file_watcher.is_none() && config.file_watcher.unwrap_or(false) {
         rocket::tokio::spawn(
             services::file_watcher::init(
                 data_file_path, 

@@ -38,7 +38,7 @@ pub struct Config {
 
     /// Watch file changes and reload data and policy
     #[arg(short)]
-    pub file_watch: Option<bool>,
+    pub file_watcher: Option<bool>,
 }
 
 impl Into<rocket::figment::Figment> for &Config {
@@ -61,8 +61,8 @@ impl Into<rocket::figment::Figment> for &Config {
         if let Some(policy) = self.policy.borrow() {
             config = config.merge(("policy", policy));
         }
-        if let Some(file_watch) = self.file_watch.borrow() {
-            config = config.merge(("file_watch", file_watch));
+        if let Some(file_watcher) = self.file_watcher.borrow() {
+            config = config.merge(("file_watcher", file_watcher));
         }
 
         config
@@ -78,7 +78,7 @@ impl Config {
             log_level: None,
             data: None,
             policy: None,
-            file_watch: None,
+            file_watcher: None,
         }
     }
 
@@ -91,7 +91,7 @@ impl Config {
             config.log_level = c.log_level.or(config.log_level);
             config.data = c.data.or(config.data);
             config.policy = c.policy.or(config.policy);
-            config.file_watch = c.file_watch.or(config.file_watch);
+            config.file_watcher = c.file_watcher.or(config.file_watcher);
         }
 
         config
