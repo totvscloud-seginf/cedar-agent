@@ -12,6 +12,7 @@ use crate::services::data::memory::MemoryDataStore;
 use crate::services::data::DataStore;
 use crate::services::policies::memory::MemoryPolicyStore;
 use crate::services::policies::PolicyStore;
+use std::sync::Arc;
 
 mod authn;
 mod common;
@@ -27,13 +28,23 @@ async fn main() {
     let config = config::init();
     logger::init(&config);
     let server_config: rocket::figment::Figment = config.borrow().into();
+    let data_store = MemoryDataStore::new();
+    let policy_store = MemoryPolicyStore::new();
+
+    let data_file_path = config.data.clone().unwrap_or("".to_string());
+    let policies_file_path = config.policy.clone().unwrap_or("".to_string());
+    let data_store_arc = Arc::new(data_store);
+    let policy_store_arc = Arc::new(policy_store);
+
+    rocket::tokio::spawn(services::file_watcher::init(data_file_path, policies_file_path, data_store_arc.clone(), policy_store_arc.clone()));
+
     let launch_result = rocket::custom(server_config)
         .attach(common::DefaultContentType::new(ContentType::JSON))
         .attach(services::data::load_from_file::InitDataFairing)
         .attach(services::policies::load_from_file::InitPoliciesFairing)
         .manage(config)
-        .manage(Box::new(MemoryPolicyStore::new()) as Box<dyn PolicyStore>)
-        .manage(Box::new(MemoryDataStore::new()) as Box<dyn DataStore>)
+        .manage(Box::new(policy_store_arc.clone()) as Box<dyn PolicyStore>)
+        .manage(Box::new(data_store_arc.clone()) as Box<dyn DataStore>)
         .manage(cedar_policy::Authorizer::new())
         .register(
             "/",

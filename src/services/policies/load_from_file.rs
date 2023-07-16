@@ -42,7 +42,7 @@ pub(crate) async fn init(conf: &config::Config, policy_store: &Box<dyn PolicySto
     };
 }
 
-async fn load_policies_from_file(path: PathBuf) -> Result<Json<Vec<Policy>>, Box<dyn Error>> {
+pub async fn load_policies_from_file(path: PathBuf) -> Result<Json<Vec<Policy>>, Box<dyn Error>> {
     // check if file exists
     if !path.exists() {
         return Err("File does not exist".into());
@@ -74,8 +74,13 @@ async fn load_policies_from_file(path: PathBuf) -> Result<Json<Vec<Policy>>, Box
 #[async_trait::async_trait]
 impl Fairing for InitPoliciesFairing {
     async fn on_ignite(&self, rocket: Rocket<Build>) -> Result<Rocket<Build>, Rocket<Build>> {
-        let config = rocket.state::<config::Config>().unwrap();
-        init(config, rocket.state::<Box<dyn PolicyStore>>().unwrap()).await;
+        let config = rocket.state::<config::Config>();
+
+        if config.is_none() {
+            return Ok(rocket);
+        }
+
+        init(config.unwrap(), rocket.state::<Box<dyn PolicyStore>>().unwrap()).await;
 
         Ok(rocket)
     }

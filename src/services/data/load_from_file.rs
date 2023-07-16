@@ -41,7 +41,7 @@ pub(crate) async fn init(conf: &config::Config, data_store: &Box<dyn DataStore>)
     };
 }
 
-async fn load_entities_from_file(path: PathBuf) -> Result<Entities, Box<dyn Error>> {
+pub async fn load_entities_from_file(path: PathBuf) -> Result<Entities, Box<dyn Error>> {
     // check if file exists
     if !path.exists() {
         return Err("File does not exist".into());
@@ -73,8 +73,13 @@ async fn load_entities_from_file(path: PathBuf) -> Result<Entities, Box<dyn Erro
 #[async_trait::async_trait]
 impl Fairing for InitDataFairing {
     async fn on_ignite(&self, rocket: Rocket<Build>) -> Result<Rocket<Build>, Rocket<Build>> {
-        let config = rocket.state::<config::Config>().unwrap();
-        init(config, rocket.state::<Box<dyn DataStore>>().unwrap()).await;
+        let config = rocket.state::<config::Config>();
+
+        if config.is_none() {
+            return Ok(rocket);
+        }
+
+        init(config.unwrap(), rocket.state::<Box<dyn DataStore>>().unwrap()).await;
 
         Ok(rocket)
     }

@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::error::Error;
+use std::sync::Arc;
 
 use async_lock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use async_trait::async_trait;
@@ -59,7 +60,7 @@ impl MemoryDataStore {
 }
 
 #[async_trait]
-impl DataStore for MemoryDataStore {
+impl DataStore for Arc<MemoryDataStore> {
     async fn entities(&self) -> cedar_policy::Entities {
         let lock = self.read().await;
         lock.cedar_entities()

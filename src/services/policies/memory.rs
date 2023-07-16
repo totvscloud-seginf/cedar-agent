@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::error::Error;
+use std::sync::Arc;
 
 use async_lock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use async_trait::async_trait;
@@ -63,7 +64,7 @@ impl MemoryPolicyStore {
 }
 
 #[async_trait]
-impl PolicyStore for MemoryPolicyStore {
+impl PolicyStore for Arc<MemoryPolicyStore> {
     async fn policy_set(&self) -> PolicySet {
         let lock = self.read().await;
         lock.policy_set()
