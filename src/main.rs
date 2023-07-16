@@ -2,6 +2,7 @@ extern crate core;
 extern crate rocket;
 
 use std::borrow::Borrow;
+use std::path::PathBuf;
 
 use rocket::catchers;
 use rocket::http::ContentType;
@@ -31,12 +32,21 @@ async fn main() {
     let data_store = MemoryDataStore::new();
     let policy_store = MemoryPolicyStore::new();
 
-    let data_file_path = config.data.clone().unwrap_or("".to_string());
-    let policies_file_path = config.policy.clone().unwrap_or("".to_string());
+    let data_file_path = config.data.clone().unwrap_or(PathBuf::new());
+    let policies_file_path = config.policy.clone().unwrap_or(PathBuf::new());
     let data_store_arc = Arc::new(data_store);
     let policy_store_arc = Arc::new(policy_store);
 
-    rocket::tokio::spawn(services::file_watcher::init(data_file_path, policies_file_path, data_store_arc.clone(), policy_store_arc.clone()));
+    if !config.file_watch.is_none() && config.file_watch.unwrap_or(false) {
+        rocket::tokio::spawn(
+            services::file_watcher::init(
+                data_file_path, 
+                policies_file_path, 
+                data_store_arc.clone(), 
+                policy_store_arc.clone()
+            )
+        );
+    }
 
     let launch_result = rocket::custom(server_config)
         .attach(common::DefaultContentType::new(ContentType::JSON))
