@@ -18,20 +18,19 @@ pub enum FileType {
 }
 
 
-fn calculate_hash_file(file_path: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let path = PathBuf::from(file_path);
+fn calculate_hash_file(file_path: PathBuf) -> Result<String, Box<dyn std::error::Error>> {
 
     // check if file exists
-    if !path.exists() {
+    if file_path.try_exists().is_err() || !file_path.is_file() || file_path.display().to_string().is_empty() {
         return Ok("".to_string());
     }
 
     // check if is a valid json file
-    if path.extension().unwrap() != "json" {
+    if file_path.extension().unwrap() != "json" {
         return Ok("".to_string());
     }
 
-    let mut file = match fs::File::open(&path) {
+    let mut file = match fs::File::open(&file_path) {
         Ok(file) => file,
         Err(err) => return Err(format!("Failed to open file: {}", err).into()),
     };
@@ -48,7 +47,7 @@ fn calculate_hash_file(file_path: &str) -> Result<String, Box<dyn std::error::Er
 }
 
 pub async fn watch_json_file_modify(
-    files: Vec<(FileType, String)>,
+    files: Vec<(FileType, PathBuf)>,
     data_store: Arc<MemoryDataStore>,
     policy_store: Arc<MemoryPolicyStore>,
 ) {
@@ -56,11 +55,11 @@ pub async fn watch_json_file_modify(
     let mut files_hash: Vec<String> = Vec::new();
     
     for (_, file) in &files {
-        if file.is_empty() {
+        if file.try_exists().is_err() {
             continue;
         }
 
-        let hash = match calculate_hash_file(file) {
+        let hash = match calculate_hash_file(file.to_path_buf()) {
             Ok(hash) => hash,
             Err(err) => {
                 error!("Failed to calculate hash file: {}", err);
@@ -88,11 +87,11 @@ pub async fn watch_json_file_modify(
 
         for (index, (file_type, file)) in files.iter().enumerate() {
 
-            if file.is_empty() {
+            if file.try_exists().is_err() {
                 continue;
             }
 
-            let novo_hash = calculate_hash_file(file).unwrap();
+            let novo_hash = calculate_hash_file(file.to_path_buf()).unwrap();
 
             if novo_hash.is_empty() {
                 continue;
@@ -110,7 +109,7 @@ pub async fn watch_json_file_modify(
                         };
                         match data_store.update_entities(entities).await {
                             Ok(entities) => {
-                                info!("Successfully updated entities from file {}: {} entities", &file, entities.len());
+                                info!("Successfully updated entities from file {}: {} entities", &file.display(), entities.len());
                             }
                             Err(err) => {
                                 error!("Failed to update entities: {}", err);
@@ -128,7 +127,7 @@ pub async fn watch_json_file_modify(
                         };
                         match policy_store.update_policies(policies.into_inner()).await {
                             Ok(policies) => {
-                                info!("Successfully updated policies from file {}: {} policies", &file, policies.len());
+                                info!("Successfully updated policies from file {}: {} policies", &file.display(), policies.len());
                             }
                             Err(err) => {
                                 error!("Failed to update policies: {}", err);
@@ -144,18 +143,18 @@ pub async fn watch_json_file_modify(
 }
 
 pub async fn init(
-    data_file_path: String,
-    policy_file_path: String, 
+    data_file_path: PathBuf,
+    policy_file_path: PathBuf, 
     data_store: Arc<MemoryDataStore>, 
     policy_store: Arc<MemoryPolicyStore>
 ) {
-    if data_file_path.is_empty() && policy_file_path.is_empty() {
+    if data_file_path.try_exists().is_err() && policy_file_path.try_exists().is_err() {
         return;
     }
 
-    let mut files: Vec<(FileType, String)> = Vec::new();
-    files.push((FileType::Data, data_file_path.to_string()));
-    files.push((FileType::Policy, policy_file_path.to_string()));
+    let mut files: Vec<(FileType, PathBuf)> = Vec::new();
+    files.push((FileType::Data, data_file_path));
+    files.push((FileType::Policy, policy_file_path));
     
     watch_json_file_modify(files, data_store, policy_store).await;
 }

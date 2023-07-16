@@ -15,14 +15,14 @@ use crate::schemas::data::Entities;
 pub struct InitDataFairing;
 
 pub(crate) async fn init(conf: &config::Config, data_store: &Box<dyn DataStore>) {
-    let file_path = conf.data.clone().unwrap_or("".to_string());
 
-    if file_path.is_empty() {
+    if conf.data.is_none() {
         return;
     }
 
-    let entities_file_path = PathBuf::from(&file_path);
-    let entities = match load_entities_from_file(entities_file_path).await {
+    let file_path = conf.data.clone().unwrap();
+    let entities_file_path = &file_path;
+    let entities = match load_entities_from_file(entities_file_path.to_path_buf()).await {
         Ok(entities) => entities,
         Err(err) => {
             error!("Failed to load entities from file: {}", err);
@@ -32,7 +32,7 @@ pub(crate) async fn init(conf: &config::Config, data_store: &Box<dyn DataStore>)
 
     match data_store.update_entities(entities).await {
         Ok(entities) => {
-            info!("Successfully updated entities from file {}: {} entities", &file_path, entities.len());
+            info!("Successfully updated entities from file {}: {} entities", &file_path.display(), entities.len());
         }
         Err(err) => {
             error!("Failed to update entities: {}", err);
@@ -43,7 +43,7 @@ pub(crate) async fn init(conf: &config::Config, data_store: &Box<dyn DataStore>)
 
 pub async fn load_entities_from_file(path: PathBuf) -> Result<Entities, Box<dyn Error>> {
     // check if file exists
-    if !path.exists() {
+    if path.try_exists().is_err() || !path.is_file() {
         return Err("File does not exist".into());
     }
 
