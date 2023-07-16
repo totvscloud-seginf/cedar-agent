@@ -1,27 +1,44 @@
 use fmt::Debug;
 use std::borrow::Borrow;
 use std::fmt;
+use std::path::PathBuf;
 
 use clap::Parser;
-use log::LevelFilter;
+use log::{LevelFilter, info};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Config {
+    
+    /// Sets an authentication
     #[arg(short, long)]
     pub authentication: Option<String>,
+    
+    /// Sets an address
     #[arg(long)]
     pub addr: Option<String>,
+    
+    /// Sets a port number
     #[arg(short, long)]
     pub port: Option<u16>,
+
+    /// Sets a log level
     #[arg(short, long, value_enum)]
     pub log_level: Option<LevelFilter>,
+
+    /// Sets a data json file
     #[arg(short, long)]
-    pub data: Option<String>,
+    pub data: Option<PathBuf>,
+
+    /// Sets a policy json file
     #[arg(long)]
-    pub policy: Option<String>,
+    pub policy: Option<PathBuf>,
+
+    /// Watch file changes and reload data and policy
+    #[arg(short)]
+    pub file_watch: Option<bool>,
 }
 
 impl Into<rocket::figment::Figment> for &Config {
@@ -44,6 +61,9 @@ impl Into<rocket::figment::Figment> for &Config {
         if let Some(policy) = self.policy.borrow() {
             config = config.merge(("policy", policy));
         }
+        if let Some(file_watch) = self.file_watch.borrow() {
+            config = config.merge(("file_watch", file_watch));
+        }
 
         config
     }
@@ -58,6 +78,7 @@ impl Config {
             log_level: None,
             data: None,
             policy: None,
+            file_watch: None,
         }
     }
 
@@ -70,6 +91,7 @@ impl Config {
             config.log_level = c.log_level.or(config.log_level);
             config.data = c.data.or(config.data);
             config.policy = c.policy.or(config.policy);
+            config.file_watch = c.file_watch.or(config.file_watch);
         }
 
         config
@@ -80,9 +102,15 @@ impl Config {
     }
 
     fn from_env() -> Self {
-        match envy::from_env() {
-            Ok(env) => env,
-            Err(_) => Self::new(),
+        match envy::prefixed("CEDAR_AGENT_").from_env() {
+            Ok(env) => {
+                info!("Loaded config from environment variables");
+                env
+            },
+            Err(err) => {                
+                println!("Failed to load config from environment variables: {}", err);
+                Self::new()
+            },
         }
     }
 }
