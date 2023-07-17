@@ -38,7 +38,7 @@ async fn main() {
     if !config.file_watcher.is_none() && config.file_watcher.unwrap_or(false) {
         services::file_watcher::init(
             config.data.clone().unwrap_or(PathBuf::new()), 
-            config.policy.clone().unwrap_or(PathBuf::new()), 
+            config.policies.clone().unwrap_or(PathBuf::new()), 
             data_store_arc.clone(), 
             policy_store_arc.clone()
         );
