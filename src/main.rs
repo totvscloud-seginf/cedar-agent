@@ -32,19 +32,15 @@ async fn main() {
     let data_store = MemoryDataStore::new();
     let policy_store = MemoryPolicyStore::new();
 
-    let data_file_path = config.data.clone().unwrap_or(PathBuf::new());
-    let policies_file_path = config.policy.clone().unwrap_or(PathBuf::new());
     let data_store_arc = Arc::new(data_store);
     let policy_store_arc = Arc::new(policy_store);
 
     if !config.file_watcher.is_none() && config.file_watcher.unwrap_or(false) {
-        rocket::tokio::spawn(
-            services::file_watcher::init(
-                data_file_path, 
-                policies_file_path, 
-                data_store_arc.clone(), 
-                policy_store_arc.clone()
-            )
+        services::file_watcher::init(
+            config.data.clone().unwrap_or(PathBuf::new()), 
+            config.policy.clone().unwrap_or(PathBuf::new()), 
+            data_store_arc.clone(), 
+            policy_store_arc.clone()
         );
     }
 

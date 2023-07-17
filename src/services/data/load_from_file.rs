@@ -42,12 +42,11 @@ pub(crate) async fn init(conf: &config::Config, data_store: &Box<dyn DataStore>)
 }
 
 pub async fn load_entities_from_file(path: PathBuf) -> Result<Entities, Box<dyn Error>> {
-    // check if file exists
-    if path.try_exists().is_err() || !path.is_file() {
+    
+    if !path.try_exists().unwrap_or(false) || !path.is_file() {
         return Err("File does not exist".into());
     }
-
-    // check if is a valid json file
+    
     if path.extension().unwrap() != "json" {
         return Err("File is not a json file".into());
     }
